@@ -1,657 +1,246 @@
-"use strict";
+// ============================================================
+// VK MINI APP
+// Основная логика приложения
+//
+// Все настройки вынесены в config.js.
+// Для создания собственного Mini App достаточно изменить config.js.
+// ============================================================
 
 
-/*
-    ============================================================
-    НАСТРОЙКА ССЫЛКИ
-    ============================================================
-
-    ПОКА НИЧЕГО НЕ МЕНЯЙ.
-
-    Когда Mini App заработает, сюда поставим ссылку
-    на твою VK-группу.
-*/
-
-const COMMUNITY_URL = "https://vk.com/";
-
-
-/*
-    ============================================================
-    СОСТОЯНИЕ ПРИЛОЖЕНИЯ
-    ============================================================
-*/
-
-const state = {
+let state = {
     step: 1,
-
     product: null,
-
     goal: null,
-
     resources: null
 };
 
 
-/*
-    ============================================================
-    ВАРИАНТЫ
-    ============================================================
-*/
+// ============================================================
+// ИНИЦИАЛИЗАЦИЯ VK
+// ============================================================
 
-const products = [
-
-    {
-        id: "services",
-
-        title: "Услуги",
-
-        description:
-            "Консультации, сопровождение, работа один на один или под заказ"
-    },
-
-    {
-        id: "products",
-
-        title: "Товары",
-
-        description:
-            "Физические или цифровые продукты"
-    },
-
-    {
-        id: "education",
-
-        title: "Обучение",
-
-        description:
-            "Курсы, программы, наставничество, клубы"
+async function initVK() {
+    try {
+        if (window.vkBridge) {
+            await vkBridge.send("VKWebAppInit");
+        }
+    } catch (error) {
+        console.log("VK Bridge:", error);
     }
+}
 
-];
+
+// ============================================================
+// ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+// ============================================================
+
+const screen = document.getElementById("screen");
+const stepCounter = document.getElementById("stepCounter");
 
 
-const goals = [
-
-    {
-        id: "sales",
-
-        title: "Быстрые продажи",
-
-        description:
-            "Хочу быстрее переводить интерес в покупку"
-    },
-
-    {
-        id: "warmup",
-
-        title: "Прогрев",
-
-        description:
-            "Хочу постепенно подводить человека к решению"
-    },
-
-    {
-        id: "reactivation",
-
-        title: "Вернуть базу",
-
-        description:
-            "У меня есть люди, которые давно молчат"
+function updateStepCounter() {
+    if (state.step <= 3) {
+        stepCounter.textContent = `${state.step} / 3`;
+    } else {
+        stepCounter.textContent = "";
     }
+}
 
-];
 
+function restartAnimation() {
+    screen.style.animation = "none";
 
-const resources = [
+    // Перезапускаем CSS-анимацию
+    void screen.offsetWidth;
 
-    {
-        id: "minimum",
+    screen.style.animation = "";
+}
 
-        title: "Минимум ресурсов",
 
-        description:
-            "Хочу запустить быстро и без сложной конструкции"
-    },
+function render(html) {
+    screen.innerHTML = html;
 
-    {
-        id: "medium",
+    restartAnimation();
 
-        title: "Средне",
+    updateStepCounter();
 
-        description:
-            "Готова вложиться в механику, если она полезна"
-    },
+    window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+    });
+}
 
-    {
-        id: "maximum",
 
-        title: "Максимум",
+function createOption(item, handler) {
+    return `
+        <button class="option" data-id="${item.id}">
+            <span class="option-title">
+                ${item.title}
+            </span>
 
-        description:
-            "Хочу полноценный инструмент внутри продаж"
-    }
+            <span class="option-description">
+                ${item.description}
+            </span>
+        </button>
+    `;
+}
 
-];
 
+function attachOptionHandlers(items, handler) {
+    document
+        .querySelectorAll(".option")
+        .forEach(button => {
 
-/*
-    ============================================================
-    РЕЗУЛЬТАТЫ
-    ============================================================
-*/
+            button.addEventListener("click", () => {
 
-const results = {
+                const id = button.dataset.id;
 
-
-    /*
-        УСЛУГИ
-    */
-
-    "services-sales-minimum": {
-
-        name: "Калькулятор стоимости",
-
-        description:
-            "Дайте человеку несколько параметров и покажите ориентир стоимости или подходящий формат работы. Это снимает часть вопросов ещё до личного общения."
-
-    },
-
-
-    "services-sales-medium": {
-
-        name: "Подбор решения",
-
-        description:
-            "Мини-диагностика из нескольких вопросов, после которой человек получает подходящий формат вашей услуги. Это уже не просто квиз, а предварительная квалификация клиента."
-
-    },
-
-
-    "services-sales-maximum": {
-
-        name: "Интерактивный диагност",
-
-        description:
-            "Диагностика → персональный результат → объяснение проблемы → следующий шаг. Такой инструмент может заменить часть первичной консультации."
-
-    },
-
-
-    "services-warmup-minimum": {
-
-        name: "Тест «Что вам мешает?»",
-
-        description:
-            "Небольшой тест помогает человеку самому сформулировать проблему, а вам — продолжить разговор уже с понятным контекстом."
-
-    },
-
-
-    "services-warmup-medium": {
-
-        name: "Персональный маршрут",
-
-        description:
-            "Человек отвечает на несколько вопросов и получает следующий шаг: что проверить, изменить или сделать в первую очередь."
-
-    },
-
-
-    "services-warmup-maximum": {
-
-        name: "Интерактивная консультация",
-
-        description:
-            "Диагностика, рекомендации и несколько веток развития ситуации в одном инструменте. Пользователь получает пользу ещё до разговора с вами."
-
-    },
-
-
-    "services-reactivation-minimum": {
-
-        name: "Повод вернуться",
-
-        description:
-            "Сделайте короткий тест или выбор сценария, который интересно пройти даже тем, кто давно не отвечал."
-
-    },
-
-
-    "services-reactivation-medium": {
-
-        name: "Повторная диагностика",
-
-        description:
-            "Предложите бывшим лидам проверить, что изменилось у них за последнее время, и получить новый персональный результат."
-
-    },
-
-
-    "services-reactivation-maximum": {
-
-        name: "Персональный аудит",
-
-        description:
-            "Интерактивный аудит возвращает человека в диалог и одновременно показывает вашу экспертность."
-
-    },
-
-
-    /*
-        ТОВАРЫ
-    */
-
-    "products-sales-minimum": {
-
-        name: "Подбор товара",
-
-        description:
-            "Несколько вопросов вместо каталога на 100 экранов: человек отвечает, а вы показываете ему подходящие варианты."
-
-    },
-
-
-    "products-sales-medium": {
-
-        name: "Конструктор выбора",
-
-        description:
-            "Дайте человеку собрать подходящий вариант из нескольких параметров. Понятная логика выбора уменьшает сомнения перед покупкой."
-
-    },
-
-
-    "products-sales-maximum": {
-
-        name: "Интерактивный консультант",
-
-        description:
-            "Инструмент проводит человека от задачи до конкретного товара или комплекта и подводит к покупке."
-
-    },
-
-
-    "products-warmup-minimum": {
-
-        name: "Тест-подбор",
-
-        description:
-            "Человек проходит небольшой тест и получает подходящий продукт плюс объяснение, почему именно он."
-
-    },
-
-
-    "products-warmup-medium": {
-
-        name: "Гид по выбору",
-
-        description:
-            "Вместо прямой продажи помогите человеку разобраться в вариантах. В конце — персональная рекомендация."
-
-    },
-
-
-    "products-warmup-maximum": {
-
-        name: "Интерактивный эксперт",
-
-        description:
-            "Соберите экспертную логику продавца в интерфейсе: вопросы, сравнение, рекомендации и следующий шаг."
-
-    },
-
-
-    "products-reactivation-minimum": {
-
-        name: "Обновлённый подбор",
-
-        description:
-            "Верните старую аудиторию новым инструментом: пусть человек заново подберёт товар под свою текущую задачу."
-
-    },
-
-
-    "products-reactivation-medium": {
-
-        name: "Что вам подходит сейчас?",
-
-        description:
-            "Несколько новых вопросов — и человек получает актуальную рекомендацию вместо обычного рекламного сообщения."
-
-    },
-
-
-    "products-reactivation-maximum": {
-
-        name: "Персональный пересмотр",
-
-        description:
-            "Интерактивный подбор может одновременно реактивировать базу, собирать данные о запросах и вести к конкретным товарам."
-
-    },
-
-
-    /*
-        ОБУЧЕНИЕ
-    */
-
-    "education-sales-minimum": {
-
-        name: "Мини-тест перед покупкой",
-
-        description:
-            "Помогите человеку понять, подходит ли ему ваш продукт и с какого уровня лучше начать."
-
-    },
-
-
-    "education-sales-medium": {
-
-        name: "Диагностика готовности",
-
-        description:
-            "Несколько вопросов показывают текущую точку человека и подводят к программе, которая закрывает именно этот разрыв."
-
-    },
-
-
-    "education-sales-maximum": {
-
-        name: "Подбор программы",
-
-        description:
-            "Диагностика, сегментация и рекомендация в одном инструменте. На выходе человек получает конкретный маршрут обучения."
-
-    },
-
-
-    "education-warmup-minimum": {
-
-        name: "Тест «Где вы сейчас?»",
-
-        description:
-            "Короткий тест помогает человеку увидеть свою точку А и понять, чего ему не хватает для следующего шага."
-
-    },
-
-
-    "education-warmup-medium": {
-
-        name: "Карта точки А → точки Б",
-
-        description:
-            "После нескольких вопросов человек получает персональный маршрут и видит, какой результат может дать обучение."
-
-    },
-
-
-    "education-warmup-maximum": {
-
-        name: "Интерактивная диагностика",
-
-        description:
-            "Глубокая диагностика показывает ситуацию пользователя, формирует рекомендацию и естественно ведёт к вашей программе."
-
-    },
-
-
-    "education-reactivation-minimum": {
-
-        name: "Повторная самодиагностика",
-
-        description:
-            "Верните старых подписчиков вопросом «Что изменилось у вас за это время?» и дайте им новый персональный результат."
-
-    },
-
-
-    "education-reactivation-medium": {
-
-        name: "Проверка прогресса",
-
-        description:
-            "Дайте человеку сравнить себя с прежней точкой. Это хороший повод вернуться к теме обучения без прямой продажи."
-
-    },
-
-
-    "education-reactivation-maximum": {
-
-        name: "Персональный образовательный маршрут",
-
-        description:
-            "Интерактив показывает текущую ситуацию, пробелы и следующий шаг. Такой инструмент можно использовать повторно для разных сегментов."
-
-    }
-
-};
-
-
-/*
-    ============================================================
-    VK BRIDGE
-    ============================================================
-*/
-
-function initVK() {
-
-    if (typeof vkBridge === "undefined") {
-
-        console.log("VK Bridge не найден. Работаем в браузерном режиме.");
-
-        return;
-    }
-
-
-    vkBridge
-        .send("VKWebAppInit")
-        .then(() => {
-
-            console.log("VK Mini App успешно инициализирован.");
-
-        })
-        .catch((error) => {
-
-            console.log(
-                "VK Bridge initialization error:",
-                error
-            );
+                handler(id);
+            });
 
         });
-
 }
 
 
-/*
-    ============================================================
-    СЧЁТЧИК ШАГОВ
-    ============================================================
-*/
+// ============================================================
+// ГЛАВНЫЙ ЭКРАН
+// ============================================================
 
-function updateStepCounter(text) {
+function renderStart() {
 
-    const element =
-        document.getElementById("stepCounter");
+    state.step = 1;
 
+    state.product = null;
+    state.goal = null;
+    state.resources = null;
 
-    if (element) {
-
-        element.textContent = text;
-
-    }
-
-}
-
-
-/*
-    ============================================================
-    РЕНДЕР
-    ============================================================
-*/
-
-function render() {
-
-    const screen =
-        document.getElementById("screen");
-
-
-    if (!screen) {
-
-        return;
-
-    }
-
-
-    if (state.step === 1) {
-
-        renderProductStep();
-
-        return;
-
-    }
-
-
-    if (state.step === 2) {
-
-        renderGoalStep();
-
-        return;
-
-    }
-
-
-    if (state.step === 3) {
-
-        renderResourcesStep();
-
-        return;
-
-    }
-
-
-    if (state.step === 4) {
-
-        renderResult();
-
-        return;
-
-    }
-
-}
-
-
-/*
-    ============================================================
-    ШАГ 1
-    ============================================================
-*/
-
-function renderProductStep() {
-
-    updateStepCounter("1 / 3");
-
-
-    const screen =
-        document.getElementById("screen");
-
-
-    screen.innerHTML = `
+    render(`
 
         <div class="badge">
-            ИНТЕРАКТИВНЫЙ ЛИД-МАГНИТ
+            ИНТЕРАКТИВНЫЙ ДИАГНОСТИЧЕСКИЙ ТЕСТ
         </div>
-
 
         <h1>
-            Что вам<br>
-            на самом деле нужно?
+            ${CONFIG.title}
         </h1>
 
-
         <p class="description">
-            Ответьте на три вопроса — и получите механику,
-            которую можно использовать для привлечения,
-            прогрева или возврата клиентов.
+            ${CONFIG.subtitle}
         </p>
 
+        <button
+            class="primary-button"
+            id="startButton"
+        >
+            Начать
+        </button>
 
-        <div class="options">
-
-            ${products.map(createProductButton).join("")}
-
+        <div class="note">
+            Всего 3 вопроса. В конце вы получите персональную рекомендацию.
         </div>
 
-    `;
-
+    `);
 
     document
-        .querySelectorAll("[data-product]")
-        .forEach((button) => {
+        .getElementById("startButton")
+        .addEventListener("click", () => {
 
-            button.addEventListener(
-                "click",
-                () => {
+            state.step = 1;
 
-                    state.product =
-                        button.dataset.product;
-
-                    state.step = 2;
-
-                    render();
-
-                }
-            );
+            renderProductQuestion();
 
         });
-
 }
 
 
-/*
-    ============================================================
-    ШАГ 2
-    ============================================================
-*/
+// ============================================================
+// ВОПРОС 1
+// ============================================================
 
-function renderGoalStep() {
+function renderProductQuestion() {
 
-    updateStepCounter("2 / 3");
+    state.step = 1;
 
+    const options = CONFIG.products
+        .map(item => createOption(item))
+        .join("");
 
-    const screen =
-        document.getElementById("screen");
-
-
-    screen.innerHTML = `
+    render(`
 
         <div class="progress">
-
             <div
                 class="progress-inner"
-                style="width: 66%"
+                style="width: 33.33%"
             ></div>
-
         </div>
 
+        <div class="badge">
+            ВОПРОС 1
+        </div>
 
         <h2>
-            А чего вы хотите добиться?
+            Что вы продаёте?
         </h2>
 
-
         <p class="description">
-            От цели зависит сама механика.
-            Один и тот же продукт можно продавать
-            совершенно разными сценариями.
+            Выберите вариант, который ближе всего к вашей модели бизнеса.
         </p>
 
-
         <div class="options">
-
-            ${goals.map(createGoalButton).join("")}
-
+            ${options}
         </div>
 
+    `);
+
+    attachOptionHandlers(
+        CONFIG.products,
+        productId => {
+
+            state.product = productId;
+
+            renderGoalQuestion();
+
+        }
+    );
+}
+
+
+// ============================================================
+// ВОПРОС 2
+// ============================================================
+
+function renderGoalQuestion() {
+
+    state.step = 2;
+
+    const options = CONFIG.goals
+        .map(item => createOption(item))
+        .join("");
+
+    render(`
+
+        <div class="progress">
+            <div
+                class="progress-inner"
+                style="width: 66.66%"
+            ></div>
+        </div>
+
+        <div class="badge">
+            ВОПРОС 2
+        </div>
+
+        <h2>
+            Что сейчас важнее всего?
+        </h2>
+
+        <p class="description">
+            Выберите главную задачу, которую хотите решить.
+        </p>
+
+        <div class="options">
+            ${options}
+        </div>
 
         <button
             class="back-button"
@@ -660,92 +249,66 @@ function renderGoalStep() {
             ← Назад
         </button>
 
-    `;
+    `);
 
+    attachOptionHandlers(
+        CONFIG.goals,
+        goalId => {
 
-    document
-        .querySelectorAll("[data-goal]")
-        .forEach((button) => {
+            state.goal = goalId;
 
-            button.addEventListener(
-                "click",
-                () => {
+            renderResourcesQuestion();
 
-                    state.goal =
-                        button.dataset.goal;
-
-                    state.step = 3;
-
-                    render();
-
-                }
-            );
-
-        });
+        }
+    );
 
 
     document
         .getElementById("backButton")
-        .addEventListener(
-            "click",
-            () => {
+        .addEventListener("click", () => {
 
-                state.step = 1;
+            renderProductQuestion();
 
-                render();
-
-            }
-        );
-
+        });
 }
 
 
-/*
-    ============================================================
-    ШАГ 3
-    ============================================================
-*/
+// ============================================================
+// ВОПРОС 3
+// ============================================================
 
-function renderResourcesStep() {
+function renderResourcesQuestion() {
 
-    updateStepCounter("3 / 3");
+    state.step = 3;
 
+    const options = CONFIG.resources
+        .map(item => createOption(item))
+        .join("");
 
-    const screen =
-        document.getElementById("screen");
-
-
-    screen.innerHTML = `
+    render(`
 
         <div class="progress">
-
             <div
                 class="progress-inner"
                 style="width: 100%"
             ></div>
-
         </div>
 
+        <div class="badge">
+            ВОПРОС 3
+        </div>
 
         <h2>
             Сколько ресурсов готовы вложить?
         </h2>
 
-
         <p class="description">
-            Не обязательно начинать с огромной конструкции.
-            Выберите реальный уровень ресурсов.
+            Не только деньги — учитываем также время и готовность разбираться с системой.
         </p>
 
-
         <div class="options">
-
-            ${resources
-                .map(createResourceButton)
-                .join("")}
-
+            ${options}
         </div>
-
 
         <button
             class="back-button"
@@ -754,131 +317,79 @@ function renderResourcesStep() {
             ← Назад
         </button>
 
-    `;
+    `);
 
+    attachOptionHandlers(
+        CONFIG.resources,
+        resourceId => {
 
-    document
-        .querySelectorAll("[data-resource]")
-        .forEach((button) => {
+            state.resources = resourceId;
 
-            button.addEventListener(
-                "click",
-                () => {
+            renderResult();
 
-                    state.resources =
-                        button.dataset.resource;
-
-                    state.step = 4;
-
-                    render();
-
-                }
-            );
-
-        });
+        }
+    );
 
 
     document
         .getElementById("backButton")
-        .addEventListener(
-            "click",
-            () => {
+        .addEventListener("click", () => {
 
-                state.step = 2;
+            renderGoalQuestion();
 
-                render();
+        });
+}
 
-            }
-        );
+
+// ============================================================
+// РЕЗУЛЬТАТ
+// ============================================================
+
+function getResultKey() {
+
+    return [
+        state.product,
+        state.goal,
+        state.resources
+    ].join("_");
 
 }
 
 
-/*
-    ============================================================
-    РЕЗУЛЬТАТ
-    ============================================================
-*/
+function getResult() {
+
+    const key = getResultKey();
+
+    return RESULTS[key] || RESULTS.default;
+
+}
+
 
 function renderResult() {
 
-    updateStepCounter("ГОТОВО");
+    state.step = 4;
 
+    const result = getResult();
 
-    const key =
-        `${state.product}-${state.goal}-${state.resources}`;
-
-
-    const result =
-        results[key];
-
-
-    const screen =
-        document.getElementById("screen");
-
-
-    if (!result) {
-
-        screen.innerHTML = `
-
-            <div class="badge">
-                ОШИБКА РЕЗУЛЬТАТА
-            </div>
-
-            <h2>
-                Не удалось определить результат.
-            </h2>
-
-            <p class="description">
-                Попробуйте пройти тест ещё раз.
-            </p>
-
-            <button
-                class="primary-button"
-                id="restartButton"
-            >
-                Пройти заново
-            </button>
-
-        `;
-
-
-        document
-            .getElementById("restartButton")
-            .addEventListener(
-                "click",
-                restart
-            );
-
-
-        return;
-
-    }
-
-
-    screen.innerHTML = `
+    render(`
 
         <div class="badge">
             ВАШ РЕЗУЛЬТАТ
         </div>
 
-
         <h2>
-            Вот что можно попробовать первым.
+            Вот что вам сейчас действительно нужно
         </h2>
-
 
         <div class="result-card">
 
             <div class="result-label">
-                Рекомендуемая механика
+                РЕКОМЕНДАЦИЯ
             </div>
-
 
             <div class="result-name">
                 ${result.name}
             </div>
-
 
             <div class="result-description">
                 ${result.description}
@@ -886,211 +397,297 @@ function renderResult() {
 
         </div>
 
-
         <button
             class="primary-button"
-            id="discussButton"
+            id="communityButton"
         >
-            Обсудить реализацию
+            ${CONFIG.resultButtonText}
         </button>
-
 
         <button
             class="secondary-button"
             id="restartButton"
         >
-            Пройти заново
+            ${CONFIG.restartButtonText}
         </button>
 
+        <div class="note">
+            Результат сформирован на основе ваших ответов. Это не универсальный рецепт, а отправная точка для выбора механики.
+        </div>
 
-        <p class="note">
-            Это не готовый шаблон. Механику можно
-            адаптировать под ваш продукт, аудиторию
-            и текущую воронку.
-        </p>
+    `);
 
-    `;
+
+    document
+        .getElementById("communityButton")
+        .addEventListener("click", openCommunity);
 
 
     document
         .getElementById("restartButton")
-        .addEventListener(
-            "click",
-            restart
-        );
-
-
-    document
-        .getElementById("discussButton")
-        .addEventListener(
-            "click",
-            openCommunity
-        );
-
+        .addEventListener("click", renderStart);
 }
 
 
-/*
-    ============================================================
-    СОЗДАНИЕ КНОПОК
-    ============================================================
-*/
+// ============================================================
+// ПЕРЕХОД В СООБЩЕСТВО
+// ============================================================
 
-function createProductButton(item) {
+async function openCommunity() {
 
-    return `
+    try {
 
-        <button
-            class="option"
-            data-product="${item.id}"
-        >
+        if (window.vkBridge) {
 
-            <span class="option-title">
-                ${item.title}
-            </span>
-
-            <span class="option-description">
-                ${item.description}
-            </span>
-
-        </button>
-
-    `;
-
-}
-
-
-function createGoalButton(item) {
-
-    return `
-
-        <button
-            class="option"
-            data-goal="${item.id}"
-        >
-
-            <span class="option-title">
-                ${item.title}
-            </span>
-
-            <span class="option-description">
-                ${item.description}
-            </span>
-
-        </button>
-
-    `;
-
-}
-
-
-function createResourceButton(item) {
-
-    return `
-
-        <button
-            class="option"
-            data-resource="${item.id}"
-        >
-
-            <span class="option-title">
-                ${item.title}
-            </span>
-
-            <span class="option-description">
-                ${item.description}
-            </span>
-
-        </button>
-
-    `;
-
-}
-
-
-/*
-    ============================================================
-    НАЧАТЬ ЗАНОВО
-    ============================================================
-*/
-
-function restart() {
-
-    state.step = 1;
-
-    state.product = null;
-
-    state.goal = null;
-
-    state.resources = null;
-
-    render();
-
-}
-
-
-/*
-    ============================================================
-    КНОПКА "ОБСУДИТЬ РЕАЛИЗАЦИЮ"
-    ============================================================
-*/
-
-function openCommunity() {
-
-    if (
-        !COMMUNITY_URL ||
-        COMMUNITY_URL === "https://vk.com/"
-    ) {
-
-        alert(
-            "Ссылка на VK-группу пока не настроена."
-        );
-
-        return;
-
-    }
-
-
-    if (
-        typeof vkBridge !== "undefined"
-    ) {
-
-        vkBridge
-            .send(
+            await vkBridge.send(
                 "VKWebAppOpenURL",
                 {
-                    url: COMMUNITY_URL
-                }
-            )
-            .catch(
-                () => {
-
-                    window.open(
-                        COMMUNITY_URL,
-                        "_blank"
-                    );
-
+                    url: CONFIG.communityUrl
                 }
             );
 
-    } else {
+            return;
+        }
 
-        window.open(
-            COMMUNITY_URL,
-            "_blank"
+    } catch (error) {
+
+        console.log(
+            "VK OpenURL error:",
+            error
         );
 
     }
 
+
+    // Если приложение открыто не внутри VK,
+    // используем обычное открытие ссылки.
+
+    window.open(
+        CONFIG.communityUrl,
+        "_blank"
+    );
 }
 
 
-/*
-    ============================================================
-    ЗАПУСК
-    ============================================================
-*/
+// ============================================================
+// РЕЗУЛЬТАТЫ
+//
+// Здесь находятся все комбинации ответов.
+//
+// ВАЖНО:
+// Если участник клуба захочет изменить сами рекомендации,
+// ему достаточно изменить этот блок.
+// ============================================================
 
-initVK();
+const RESULTS = {
 
-render();
+    // --------------------------------------------------------
+    // УСЛУГИ
+    // --------------------------------------------------------
+
+    services_sales_minimum: {
+        name: "Простой лид-магнит",
+        description:
+            "Начните с простой механики, которая помогает человеку сделать следующий шаг: мини-тест, чек-лист или короткая диагностика. Сейчас вам важнее не усложнять систему, а проверить, какая механика действительно приводит к обращению."
+    },
+
+    services_sales_medium: {
+        name: "Интерактивная воронка",
+        description:
+            "Вам подойдёт интерактивная механика, которая не просто собирает контакт, а помогает человеку понять свою ситуацию и одновременно подводит его к вашему предложению."
+    },
+
+    services_sales_maximum: {
+        name: "Персонализированный помощник",
+        description:
+            "При ваших ресурсах можно собрать полноценный путь клиента: диагностика → персональный результат → предложение → следующий шаг. Здесь уже имеет смысл подключать автоматизацию и AI."
+    },
+
+
+    services_warmup_minimum: {
+        name: "Мини-диагностика",
+        description:
+            "Вместо длинного прогрева попробуйте дать человеку возможность быстро определить свою ситуацию. Это создаёт полезный первый контакт без сложной технической реализации."
+    },
+
+    services_warmup_medium: {
+        name: "Интерактивный прогрев",
+        description:
+            "Вам подойдёт механика, которая постепенно показывает человеку проблему, помогает узнать себя в ситуации и приводит к вашему решению."
+    },
+
+    services_warmup_maximum: {
+        name: "Персональный маршрут",
+        description:
+            "Можно построить полноценную систему прогрева с сегментацией, персональными результатами и разными сценариями дальнейшего взаимодействия."
+    },
+
+
+    services_reactivation_minimum: {
+        name: "Повторное касание",
+        description:
+            "Начните с простой механики, которая даст старой базе повод снова вступить с вами в контакт: тест, вопрос, мини-диагностика или полезный материал."
+    },
+
+    services_reactivation_medium: {
+        name: "Интерактив для базы",
+        description:
+            "Вам подойдёт механика, которая не просто напоминает о вас, а заставляет человека сделать небольшое действие и получить персональную пользу."
+    },
+
+    services_reactivation_maximum: {
+        name: "Система реактивации",
+        description:
+            "При достаточных ресурсах можно сегментировать базу и вести разные группы людей по разным сценариям возвращения."
+    },
+
+
+    // --------------------------------------------------------
+    // ТОВАРЫ
+    // --------------------------------------------------------
+
+    products_sales_minimum: {
+        name: "Подбор товара",
+        description:
+            "Для быстрого старта подойдёт простой тест или подборщик, который помогает человеку выбрать подходящий товар и сокращает путь до покупки."
+    },
+
+    products_sales_medium: {
+        name: "Интерактивный подборщик",
+        description:
+            "Соберите несколько вопросов и выдавайте человеку подходящий товар или набор товаров. Такая механика помогает снять сомнения и одновременно показывает ценность вашего предложения."
+    },
+
+    products_sales_maximum: {
+        name: "Персональный консультант",
+        description:
+            "При больших ресурсах можно создать полноценного цифрового помощника, который выясняет потребность, предлагает подходящие варианты и сопровождает человека до покупки."
+    },
+
+
+    products_warmup_minimum: {
+        name: "Тест интереса",
+        description:
+            "Начните с лёгкой интерактивной механики, которая помогает человеку понять собственную потребность и познакомиться с вашим продуктом."
+    },
+
+    products_warmup_medium: {
+        name: "Интерактивный прогрев",
+        description:
+            "Вам подойдёт цепочка вопросов и персональный результат, который показывает человеку, почему конкретный продукт может быть ему полезен."
+    },
+
+    products_warmup_maximum: {
+        name: "Персональная рекомендация",
+        description:
+            "Можно построить полноценную систему выбора: диагностика → сегментация → персональная рекомендация → контент → предложение."
+    },
+
+
+    products_reactivation_minimum: {
+        name: "Повторный подбор",
+        description:
+            "Дайте бывшим клиентам простой повод вернуться: новый подбор товара, тест или персональная рекомендация."
+    },
+
+    products_reactivation_medium: {
+        name: "Механика возврата",
+        description:
+            "Интерактивный подборщик поможет снова вовлечь базу и одновременно показать актуальные продукты."
+    },
+
+    products_reactivation_maximum: {
+        name: "Персональная система",
+        description:
+            "Можно сегментировать базу по потребностям и запускать разные сценарии возвращения клиентов."
+    },
+
+
+    // --------------------------------------------------------
+    // ОБУЧЕНИЕ
+    // --------------------------------------------------------
+
+    education_sales_minimum: {
+        name: "Диагностический тест",
+        description:
+            "Для быстрого старта подойдёт тест, который помогает человеку увидеть свой запрос и понять, какой ваш продукт ему подходит."
+    },
+
+    education_sales_medium: {
+        name: "Интерактивная диагностика",
+        description:
+            "Вам подойдёт механика, которая определяет ситуацию человека и выдаёт ему персональную рекомендацию по программе или формату обучения."
+    },
+
+    education_sales_maximum: {
+        name: "Персональный навигатор",
+        description:
+            "Можно построить полноценного цифрового навигатора по вашим продуктам: диагностика → рекомендация → прогрев → предложение."
+    },
+
+
+    education_warmup_minimum: {
+        name: "Мини-диагностика",
+        description:
+            "Не обязательно сразу вести человека в длинную воронку. Начните с короткой диагностики, которая помогает ему увидеть свой запрос."
+    },
+
+    education_warmup_medium: {
+        name: "Интерактивный прогрев",
+        description:
+            "Создайте механику, в которой человек отвечает на вопросы, узнаёт себя в результате и получает следующий логичный шаг."
+    },
+
+    education_warmup_maximum: {
+        name: "Персональный маршрут обучения",
+        description:
+            "При достаточных ресурсах можно построить систему, которая определяет точку человека и предлагает ему подходящий образовательный маршрут."
+    },
+
+
+    education_reactivation_minimum: {
+        name: "Повторная диагностика",
+        description:
+            "Вернуть старую аудиторию можно через новую диагностику, тест или полезный интерактив, который даёт человеку повод снова включиться."
+    },
+
+    education_reactivation_medium: {
+        name: "Интерактив для базы",
+        description:
+            "Создайте механику, которая помогает бывшим подписчикам или ученикам определить актуальный запрос и увидеть подходящий продукт."
+    },
+
+    education_reactivation_maximum: {
+        name: "Система реактивации",
+        description:
+            "Можно сегментировать базу и автоматически вести разные группы людей к разным образовательным продуктам."
+    },
+
+
+    // --------------------------------------------------------
+    // РЕЗЕРВНЫЙ РЕЗУЛЬТАТ
+    // --------------------------------------------------------
+
+    default: {
+        name: "Интерактивная диагностика",
+        description:
+            "В вашей ситуации стоит начать с механики, которая помогает человеку разобраться в своей задаче и получает персональный результат."
+    }
+
+};
+
+
+// ============================================================
+// ЗАПУСК
+// ============================================================
+
+document.addEventListener(
+    "DOMContentLoaded",
+    async () => {
+
+        await initVK();
+
+        renderStart();
+
+    }
+);
