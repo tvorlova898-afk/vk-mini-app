@@ -2,12 +2,12 @@
 // VK MINI APP
 // ОСНОВНАЯ ЛОГИКА ПРИЛОЖЕНИЯ
 //
-// Все изменяемые данные находятся в config.js.
+// Все данные владельца находятся в config.js.
 // ============================================================
 
 
 // ============================================================
-// СОСТОЯНИЕ ПРИЛОЖЕНИЯ
+// СОСТОЯНИЕ
 // ============================================================
 
 let state = {
@@ -28,7 +28,7 @@ const brandElement = document.getElementById("brand");
 
 
 // ============================================================
-// ИНИЦИАЛИЗАЦИЯ VK
+// VK BRIDGE
 // ============================================================
 
 async function initVK() {
@@ -84,7 +84,7 @@ function renderBrand() {
 
 
 // ============================================================
-// СЧЁТЧИК ШАГОВ
+// СЧЁТЧИК
 // ============================================================
 
 function updateStepCounter() {
@@ -108,7 +108,7 @@ function updateStepCounter() {
 
 
 // ============================================================
-// ПЕРЕЗАПУСК CSS-АНИМАЦИИ
+// АНИМАЦИЯ
 // ============================================================
 
 function restartAnimation() {
@@ -127,7 +127,7 @@ function restartAnimation() {
 
 
 // ============================================================
-// ОТРИСОВКА ЭКРАНА
+// ОТРИСОВКА
 // ============================================================
 
 function render(html) {
@@ -157,7 +157,7 @@ function render(html) {
 
 
 // ============================================================
-// СОЗДАНИЕ ВАРИАНТА ОТВЕТА
+// ВАРИАНТ ОТВЕТА
 // ============================================================
 
 function createOption(item) {
@@ -215,7 +215,7 @@ function attachOptionHandlers(handler) {
 
 
 // ============================================================
-// СТАРТОВЫЙ ЭКРАН
+// СТАРТ
 // ============================================================
 
 function renderStart() {
@@ -225,6 +225,7 @@ function renderStart() {
     state.product = null;
     state.goal = null;
     state.resources = null;
+
 
     render(`
 
@@ -263,11 +264,7 @@ function renderStart() {
 
         startButton.addEventListener(
             "click",
-            () => {
-
-                renderProductQuestion();
-
-            }
+            renderProductQuestion
         );
 
     }
@@ -283,9 +280,11 @@ function renderProductQuestion() {
 
     state.step = 1;
 
-    const options = CONFIG.products
-        .map(item => createOption(item))
-        .join("");
+
+    const options =
+        CONFIG.products
+            .map(item => createOption(item))
+            .join("");
 
 
     render(`
@@ -339,9 +338,11 @@ function renderGoalQuestion() {
 
     state.step = 2;
 
-    const options = CONFIG.goals
-        .map(item => createOption(item))
-        .join("");
+
+    const options =
+        CONFIG.goals
+            .map(item => createOption(item))
+            .join("");
 
 
     render(`
@@ -401,11 +402,7 @@ function renderGoalQuestion() {
 
         backButton.addEventListener(
             "click",
-            () => {
-
-                renderProductQuestion();
-
-            }
+            renderProductQuestion
         );
 
     }
@@ -421,9 +418,11 @@ function renderResourcesQuestion() {
 
     state.step = 3;
 
-    const options = CONFIG.resources
-        .map(item => createOption(item))
-        .join("");
+
+    const options =
+        CONFIG.resources
+            .map(item => createOption(item))
+            .join("");
 
 
     render(`
@@ -483,11 +482,7 @@ function renderResourcesQuestion() {
 
         backButton.addEventListener(
             "click",
-            () => {
-
-                renderGoalQuestion();
-
-            }
+            renderGoalQuestion
         );
 
     }
@@ -516,7 +511,8 @@ function getResultKey() {
 
 function getResult() {
 
-    const key = getResultKey();
+    const key =
+        getResultKey();
 
 
     if (
@@ -559,7 +555,32 @@ function renderResult() {
 
     state.step = 4;
 
-    const result = getResult();
+
+    const result =
+        getResult();
+
+
+    // --------------------------------------------------------
+    // ССЫЛКА НА ЛИЧНЫЕ СООБЩЕНИЯ
+    //
+    // Берём её из config.js.
+    // --------------------------------------------------------
+
+    const messagesUrl =
+        CONFIG.personalMessagesUrl;
+
+
+    // --------------------------------------------------------
+    // ПРОВЕРКА ССЫЛКИ
+    // --------------------------------------------------------
+
+    if (!messagesUrl) {
+
+        console.error(
+            "В config.js отсутствует CONFIG.personalMessagesUrl"
+        );
+
+    }
 
 
     render(`
@@ -588,13 +609,35 @@ function renderResult() {
 
         </div>
 
-        <button
+
+        <!-- ==================================================
+             КНОПКА ПЕРЕХОДА В СООБЩЕНИЯ
+
+             Это НЕ JavaScript-кнопка.
+
+             Это настоящая ссылка <a>.
+             Поэтому переход работает напрямую.
+             ================================================== -->
+
+        <a
+            id="messagesLink"
             class="primary-button"
-            id="messagesButton"
-            type="button"
+            href="${messagesUrl || "#"}"
+            target="_blank"
+            rel="noopener noreferrer"
+            style="
+                display: block;
+                position: relative;
+                z-index: 1000;
+                pointer-events: auto;
+                cursor: pointer;
+                text-decoration: none;
+                text-align: center;
+            "
         >
-            ${CONFIG.resultButtonText}
-        </button>
+            Обсудить результат
+        </a>
+
 
         <button
             class="secondary-button"
@@ -603,6 +646,7 @@ function renderResult() {
         >
             ${CONFIG.restartButtonText}
         </button>
+
 
         <div class="note">
             Результат сформирован на основе ваших ответов.
@@ -614,25 +658,51 @@ function renderResult() {
 
 
     // --------------------------------------------------------
-    // КНОПКА «ОБСУДИТЬ РЕЗУЛЬТАТ»
+    // ДОПОЛНИТЕЛЬНО:
+    // если ссылку нельзя открыть из-за особенностей WebView,
+    // пробуем открыть её через VK Bridge.
+    //
+    // Но сама ссылка выше уже является рабочим элементом.
     // --------------------------------------------------------
 
-    const messagesButton =
-        document.getElementById("messagesButton");
+    const messagesLink =
+        document.getElementById("messagesLink");
 
 
-    if (messagesButton) {
+    if (messagesLink) {
 
-        messagesButton.addEventListener(
+        messagesLink.addEventListener(
             "click",
-            openPersonalMessages
+            event => {
+
+                if (!messagesUrl) {
+
+                    event.preventDefault();
+
+                    alert(
+                        "Ссылка на сообщения VK не настроена."
+                    );
+
+                    return;
+
+                }
+
+
+                // Внутри VK оставляем обычную ссылку.
+                // Она должна открыться штатно.
+                console.log(
+                    "Открываем сообщения:",
+                    messagesUrl
+                );
+
+            }
         );
 
     }
 
 
     // --------------------------------------------------------
-    // КНОПКА «ПРОЙТИ ЗАНОВО»
+    // ПРОЙТИ ЗАНОВО
     // --------------------------------------------------------
 
     const restartButton =
@@ -652,102 +722,7 @@ function renderResult() {
 
 
 // ============================================================
-// ПЕРЕХОД В ЛИЧНЫЕ СООБЩЕНИЯ VK
-//
-// Ссылка берётся из:
-// CONFIG.personalMessagesUrl
-//
-// Например:
-// https://vk.me/ВАШ_ID
-// ============================================================
-
-function openPersonalMessages() {
-
-    const url =
-        CONFIG.personalMessagesUrl;
-
-
-    // --------------------------------------------------------
-    // ПРОВЕРКА ССЫЛКИ
-    // --------------------------------------------------------
-
-    if (
-        !url ||
-        url.includes("ВАШ_ID") ||
-        url.includes("YOUR_ID")
-    ) {
-
-        console.error(
-            "Не указана рабочая ссылка CONFIG.personalMessagesUrl"
-        );
-
-        alert(
-            "Ссылка на сообщения пока не настроена."
-        );
-
-        return;
-
-    }
-
-
-    // --------------------------------------------------------
-    // ВНУТРИ VK
-    //
-    // VK Bridge открывает указанную ссылку.
-    // --------------------------------------------------------
-
-    if (
-        window.vkBridge &&
-        typeof window.vkBridge.send === "function"
-    ) {
-
-        window.vkBridge
-            .send(
-                "VKWebAppOpenURL",
-                {
-                    url: url
-                }
-            )
-            .then(() => {
-
-                console.log(
-                    "Переход в сообщения выполнен."
-                );
-
-            })
-            .catch(error => {
-
-                console.log(
-                    "VK Bridge не открыл ссылку:",
-                    error
-                );
-
-                // Если Bridge не сработал,
-                // используем обычный переход.
-
-                window.location.href = url;
-
-            });
-
-        return;
-
-    }
-
-
-    // --------------------------------------------------------
-    // ЕСЛИ ОТКРЫТО НЕ В VK
-    //
-    // Например, пользователь тестирует приложение
-    // по ссылке GitHub Pages.
-    // --------------------------------------------------------
-
-    window.location.href = url;
-
-}
-
-
-// ============================================================
-// ЗАПУСК ПРИЛОЖЕНИЯ
+// ЗАПУСК
 // ============================================================
 
 document.addEventListener(
