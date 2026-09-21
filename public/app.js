@@ -2,10 +2,13 @@
 // VK MINI APP
 // Основная логика приложения
 //
-// Все настройки вынесены в config.js.
-// Для создания собственного Mini App достаточно изменить config.js.
+// Все основные настройки находятся в config.js.
 // ============================================================
 
+
+// ============================================================
+// СОСТОЯНИЕ ПРИЛОЖЕНИЯ
+// ============================================================
 
 let state = {
     step: 1,
@@ -16,48 +19,134 @@ let state = {
 
 
 // ============================================================
-// ИНИЦИАЛИЗАЦИЯ VK
-// ============================================================
-
-async function initVK() {
-    try {
-        if (window.vkBridge) {
-            await vkBridge.send("VKWebAppInit");
-        }
-    } catch (error) {
-        console.log("VK Bridge:", error);
-    }
-}
-
-
-// ============================================================
-// ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+// ЭЛЕМЕНТЫ СТРАНИЦЫ
 // ============================================================
 
 const screen = document.getElementById("screen");
 const stepCounter = document.getElementById("stepCounter");
+const brandElement = document.getElementById("brand");
 
 
-function updateStepCounter() {
-    if (state.step <= 3) {
-        stepCounter.textContent = `${state.step} / 3`;
-    } else {
-        stepCounter.textContent = "";
+// ============================================================
+// ИНИЦИАЛИЗАЦИЯ VK
+//
+// Важно:
+// приложение должно работать и внутри VK,
+// и при обычном открытии GitHub Pages.
+//
+// Поэтому VK Bridge не должен блокировать запуск приложения.
+// ============================================================
+
+async function initVK() {
+
+    try {
+
+        if (
+            window.vkBridge &&
+            typeof window.vkBridge.send === "function"
+        ) {
+
+            await Promise.race([
+
+                window.vkBridge.send("VKWebAppInit"),
+
+                new Promise(resolve => {
+                    setTimeout(resolve, 1000);
+                })
+
+            ]);
+
+        }
+
+    } catch (error) {
+
+        console.log(
+            "VK Bridge initialization:",
+            error
+        );
+
     }
+
 }
 
 
+// ============================================================
+// БРЕНД
+// ============================================================
+
+function renderBrand() {
+
+    if (
+        brandElement &&
+        typeof CONFIG !== "undefined" &&
+        CONFIG.brand
+    ) {
+
+        brandElement.textContent = CONFIG.brand;
+
+    }
+
+}
+
+
+// ============================================================
+// СЧЁТЧИК ШАГОВ
+// ============================================================
+
+function updateStepCounter() {
+
+    if (!stepCounter) {
+        return;
+    }
+
+    if (state.step <= 3) {
+
+        stepCounter.textContent =
+            `${state.step} / 3`;
+
+    } else {
+
+        stepCounter.textContent = "";
+
+    }
+
+}
+
+
+// ============================================================
+// ПЕРЕЗАПУСК CSS-АНИМАЦИИ
+// ============================================================
+
 function restartAnimation() {
+
+    if (!screen) {
+        return;
+    }
+
     screen.style.animation = "none";
 
-    // Перезапускаем CSS-анимацию
     void screen.offsetWidth;
 
     screen.style.animation = "";
+
 }
 
 
+// ============================================================
+// ОТРИСОВКА ЭКРАНА
+// ============================================================
+
 function render(html) {
+
+    if (!screen) {
+
+        console.error(
+            "Ошибка: элемент #screen не найден."
+        );
+
+        return;
+    }
+
     screen.innerHTML = html;
 
     restartAnimation();
@@ -68,12 +157,23 @@ function render(html) {
         top: 0,
         behavior: "smooth"
     });
+
 }
 
 
-function createOption(item, handler) {
+// ============================================================
+// СОЗДАНИЕ ВАРИАНТА ОТВЕТА
+// ============================================================
+
+function createOption(item) {
+
     return `
-        <button class="option" data-id="${item.id}">
+        <button
+            class="option"
+            type="button"
+            data-id="${item.id}"
+        >
+
             <span class="option-title">
                 ${item.title}
             </span>
@@ -81,24 +181,37 @@ function createOption(item, handler) {
             <span class="option-description">
                 ${item.description}
             </span>
+
         </button>
     `;
+
 }
 
 
-function attachOptionHandlers(items, handler) {
+// ============================================================
+// ПОДКЛЮЧЕНИЕ ОБРАБОТЧИКОВ КНОПОК
+// ============================================================
+
+function attachOptionHandlers(handler) {
+
     document
         .querySelectorAll(".option")
         .forEach(button => {
 
-            button.addEventListener("click", () => {
+            button.addEventListener(
+                "click",
+                () => {
 
-                const id = button.dataset.id;
+                    const id =
+                        button.dataset.id;
 
-                handler(id);
-            });
+                    handler(id);
+
+                }
+            );
 
         });
+
 }
 
 
@@ -131,6 +244,7 @@ function renderStart() {
         <button
             class="primary-button"
             id="startButton"
+            type="button"
         >
             Начать
         </button>
@@ -141,15 +255,26 @@ function renderStart() {
 
     `);
 
-    document
-        .getElementById("startButton")
-        .addEventListener("click", () => {
 
-            state.step = 1;
+    const startButton =
+        document.getElementById("startButton");
 
-            renderProductQuestion();
 
-        });
+    if (startButton) {
+
+        startButton.addEventListener(
+            "click",
+            () => {
+
+                state.step = 1;
+
+                renderProductQuestion();
+
+            }
+        );
+
+    }
+
 }
 
 
@@ -165,13 +290,16 @@ function renderProductQuestion() {
         .map(item => createOption(item))
         .join("");
 
+
     render(`
 
         <div class="progress">
+
             <div
                 class="progress-inner"
                 style="width: 33.33%"
             ></div>
+
         </div>
 
         <div class="badge">
@@ -192,8 +320,8 @@ function renderProductQuestion() {
 
     `);
 
+
     attachOptionHandlers(
-        CONFIG.products,
         productId => {
 
             state.product = productId;
@@ -202,6 +330,7 @@ function renderProductQuestion() {
 
         }
     );
+
 }
 
 
@@ -217,13 +346,16 @@ function renderGoalQuestion() {
         .map(item => createOption(item))
         .join("");
 
+
     render(`
 
         <div class="progress">
+
             <div
                 class="progress-inner"
                 style="width: 66.66%"
             ></div>
+
         </div>
 
         <div class="badge">
@@ -245,14 +377,15 @@ function renderGoalQuestion() {
         <button
             class="back-button"
             id="backButton"
+            type="button"
         >
             ← Назад
         </button>
 
     `);
 
+
     attachOptionHandlers(
-        CONFIG.goals,
         goalId => {
 
             state.goal = goalId;
@@ -263,13 +396,23 @@ function renderGoalQuestion() {
     );
 
 
-    document
-        .getElementById("backButton")
-        .addEventListener("click", () => {
+    const backButton =
+        document.getElementById("backButton");
 
-            renderProductQuestion();
 
-        });
+    if (backButton) {
+
+        backButton.addEventListener(
+            "click",
+            () => {
+
+                renderProductQuestion();
+
+            }
+        );
+
+    }
+
 }
 
 
@@ -285,13 +428,16 @@ function renderResourcesQuestion() {
         .map(item => createOption(item))
         .join("");
 
+
     render(`
 
         <div class="progress">
+
             <div
                 class="progress-inner"
                 style="width: 100%"
             ></div>
+
         </div>
 
         <div class="badge">
@@ -313,14 +459,15 @@ function renderResourcesQuestion() {
         <button
             class="back-button"
             id="backButton"
+            type="button"
         >
             ← Назад
         </button>
 
     `);
 
+
     attachOptionHandlers(
-        CONFIG.resources,
         resourceId => {
 
             state.resources = resourceId;
@@ -331,18 +478,28 @@ function renderResourcesQuestion() {
     );
 
 
-    document
-        .getElementById("backButton")
-        .addEventListener("click", () => {
+    const backButton =
+        document.getElementById("backButton");
 
-            renderGoalQuestion();
 
-        });
+    if (backButton) {
+
+        backButton.addEventListener(
+            "click",
+            () => {
+
+                renderGoalQuestion();
+
+            }
+        );
+
+    }
+
 }
 
 
 // ============================================================
-// РЕЗУЛЬТАТ
+// КЛЮЧ РЕЗУЛЬТАТА
 // ============================================================
 
 function getResultKey() {
@@ -356,20 +513,34 @@ function getResultKey() {
 }
 
 
+// ============================================================
+// ПОЛУЧЕНИЕ РЕЗУЛЬТАТА
+// ============================================================
+
 function getResult() {
 
-    const key = getResultKey();
+    const key =
+        getResultKey();
 
-    return RESULTS[key] || RESULTS.default;
+    return (
+        RESULTS[key] ||
+        RESULTS.default
+    );
 
 }
 
+
+// ============================================================
+// ЭКРАН РЕЗУЛЬТАТА
+// ============================================================
 
 function renderResult() {
 
     state.step = 4;
 
-    const result = getResult();
+    const result =
+        getResult();
+
 
     render(`
 
@@ -400,6 +571,7 @@ function renderResult() {
         <button
             class="primary-button"
             id="communityButton"
+            type="button"
         >
             ${CONFIG.resultButtonText}
         </button>
@@ -407,25 +579,51 @@ function renderResult() {
         <button
             class="secondary-button"
             id="restartButton"
+            type="button"
         >
             ${CONFIG.restartButtonText}
         </button>
 
         <div class="note">
-            Результат сформирован на основе ваших ответов. Это не универсальный рецепт, а отправная точка для выбора механики.
+            Результат сформирован на основе ваших ответов.
+            Это не универсальный рецепт, а отправная точка
+            для выбора механики.
         </div>
 
     `);
 
 
-    document
-        .getElementById("communityButton")
-        .addEventListener("click", openCommunity);
+    const communityButton =
+        document.getElementById(
+            "communityButton"
+        );
 
 
-    document
-        .getElementById("restartButton")
-        .addEventListener("click", renderStart);
+    if (communityButton) {
+
+        communityButton.addEventListener(
+            "click",
+            openCommunity
+        );
+
+    }
+
+
+    const restartButton =
+        document.getElementById(
+            "restartButton"
+        );
+
+
+    if (restartButton) {
+
+        restartButton.addEventListener(
+            "click",
+            renderStart
+        );
+
+    }
+
 }
 
 
@@ -435,18 +633,37 @@ function renderResult() {
 
 async function openCommunity() {
 
+    const url =
+        CONFIG.communityUrl;
+
+
+    if (!url) {
+
+        console.error(
+            "CONFIG.communityUrl не задан."
+        );
+
+        return;
+
+    }
+
+
     try {
 
-        if (window.vkBridge) {
+        if (
+            window.vkBridge &&
+            typeof window.vkBridge.send === "function"
+        ) {
 
-            await vkBridge.send(
+            await window.vkBridge.send(
                 "VKWebAppOpenURL",
                 {
-                    url: CONFIG.communityUrl
+                    url: url
                 }
             );
 
             return;
+
         }
 
     } catch (error) {
@@ -459,24 +676,30 @@ async function openCommunity() {
     }
 
 
-    // Если приложение открыто не внутри VK,
-    // используем обычное открытие ссылки.
+    // Если приложение открыто
+    // не внутри VK — обычное открытие ссылки.
 
     window.open(
-        CONFIG.communityUrl,
-        "_blank"
+        url,
+        "_blank",
+        "noopener,noreferrer"
     );
+
 }
 
 
 // ============================================================
 // РЕЗУЛЬТАТЫ
+// ============================================================
 //
-// Здесь находятся все комбинации ответов.
+// Ключ строится так:
 //
-// ВАЖНО:
-// Если участник клуба захочет изменить сами рекомендации,
-// ему достаточно изменить этот блок.
+// product_goal_resources
+//
+// Например:
+//
+// services_sales_minimum
+//
 // ============================================================
 
 const RESULTS = {
@@ -519,7 +742,7 @@ const RESULTS = {
     services_warmup_maximum: {
         name: "Персональный маршрут",
         description:
-            "Можно построить полноценную систему прогрева с сегментацией, персональными результатами и разными сценариями дальнейшего взаимодействия."
+            "Можно построить полноценный путь прогрева с сегментацией, персональными результатами и разными сценариями дальнейшего взаимодействия."
     },
 
 
@@ -678,15 +901,21 @@ const RESULTS = {
 
 
 // ============================================================
-// ЗАПУСК
+// ЗАПУСК ПРИЛОЖЕНИЯ
 // ============================================================
 
 document.addEventListener(
     "DOMContentLoaded",
     async () => {
 
+        // Сначала показываем бренд.
+        renderBrand();
+
+        // Затем пытаемся инициализировать VK.
+        // Ошибка VK Bridge не должна блокировать приложение.
         await initVK();
 
+        // И в любом случае запускаем интерфейс.
         renderStart();
 
     }
