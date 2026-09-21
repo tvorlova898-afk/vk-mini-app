@@ -9,11 +9,11 @@ const CONFIG = {
 
     // ⭐ Ссылка на личные сообщения VK
     // Пример: https://vk.me/123456789
-    personalMessagesUrl: "https://vk.me/ВАШ_ID",
+    personalMessagesUrl: "https://vk.me/astamarketolog",
 
     // ⭐ Ссылка на ваше сообщество или страницу VK
     // Пример: https://vk.com/ваше_сообщество
-    communityUrl: "https://vk.com/ВАША_СТРАНИЦА",
+    communityUrl: "https://vk.com/club239491424",
 
 
     // ==================================================
