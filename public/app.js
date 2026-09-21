@@ -2,9 +2,7 @@
 // VK MINI APP
 // ОСНОВНАЯ ЛОГИКА ПРИЛОЖЕНИЯ
 //
-// ВАЖНО:
 // Все изменяемые данные находятся в config.js.
-// Этот файл менять участнику клуба НЕ НУЖНО.
 // ============================================================
 
 
@@ -31,12 +29,6 @@ const brandElement = document.getElementById("brand");
 
 // ============================================================
 // ИНИЦИАЛИЗАЦИЯ VK
-//
-// Приложение должно работать:
-// 1. внутри VK;
-// 2. при обычном открытии GitHub Pages.
-//
-// Поэтому VK Bridge не должен блокировать запуск.
 // ============================================================
 
 async function initVK() {
@@ -147,6 +139,7 @@ function render(html) {
         );
 
         return;
+
     }
 
     screen.innerHTML = html;
@@ -191,7 +184,7 @@ function createOption(item) {
 
 
 // ============================================================
-// ПОДКЛЮЧЕНИЕ ОБРАБОТЧИКОВ КНОПОК
+// ОБРАБОТЧИКИ ВАРИАНТОВ
 // ============================================================
 
 function attachOptionHandlers(handler) {
@@ -222,7 +215,7 @@ function attachOptionHandlers(handler) {
 
 
 // ============================================================
-// ГЛАВНЫЙ ЭКРАН
+// СТАРТОВЫЙ ЭКРАН
 // ============================================================
 
 function renderStart() {
@@ -504,12 +497,6 @@ function renderResourcesQuestion() {
 
 // ============================================================
 // КЛЮЧ РЕЗУЛЬТАТА
-//
-// Формат:
-// product_goal_resources
-//
-// Например:
-// services_sales_minimum
 // ============================================================
 
 function getResultKey() {
@@ -525,14 +512,12 @@ function getResultKey() {
 
 // ============================================================
 // ПОЛУЧЕНИЕ РЕЗУЛЬТАТА
-//
-// ВАЖНО:
-// Результаты находятся в config.js.
 // ============================================================
 
 function getResult() {
 
     const key = getResultKey();
+
 
     if (
         CONFIG.results &&
@@ -543,6 +528,7 @@ function getResult() {
 
     }
 
+
     if (
         CONFIG.results &&
         CONFIG.results.default
@@ -552,10 +538,14 @@ function getResult() {
 
     }
 
+
     return {
+
         name: "Интерактивная диагностика",
+
         description:
             "В вашей ситуации стоит начать с механики, которая помогает человеку разобраться в своей задаче."
+
     };
 
 }
@@ -623,6 +613,10 @@ function renderResult() {
     `);
 
 
+    // --------------------------------------------------------
+    // КНОПКА «ОБСУДИТЬ РЕЗУЛЬТАТ»
+    // --------------------------------------------------------
+
     const messagesButton =
         document.getElementById("messagesButton");
 
@@ -636,6 +630,10 @@ function renderResult() {
 
     }
 
+
+    // --------------------------------------------------------
+    // КНОПКА «ПРОЙТИ ЗАНОВО»
+    // --------------------------------------------------------
 
     const restartButton =
         document.getElementById("restartButton");
@@ -658,18 +656,33 @@ function renderResult() {
 //
 // Ссылка берётся из:
 // CONFIG.personalMessagesUrl
+//
+// Например:
+// https://vk.me/ВАШ_ID
 // ============================================================
 
-async function openPersonalMessages() {
+function openPersonalMessages() {
 
     const url =
         CONFIG.personalMessagesUrl;
 
 
-    if (!url) {
+    // --------------------------------------------------------
+    // ПРОВЕРКА ССЫЛКИ
+    // --------------------------------------------------------
+
+    if (
+        !url ||
+        url.includes("ВАШ_ID") ||
+        url.includes("YOUR_ID")
+    ) {
 
         console.error(
-            "CONFIG.personalMessagesUrl не задан."
+            "Не указана рабочая ссылка CONFIG.personalMessagesUrl"
+        );
+
+        alert(
+            "Ссылка на сообщения пока не настроена."
         );
 
         return;
@@ -677,42 +690,58 @@ async function openPersonalMessages() {
     }
 
 
-    try {
+    // --------------------------------------------------------
+    // ВНУТРИ VK
+    //
+    // VK Bridge открывает указанную ссылку.
+    // --------------------------------------------------------
 
-        if (
-            window.vkBridge &&
-            typeof window.vkBridge.send === "function"
-        ) {
+    if (
+        window.vkBridge &&
+        typeof window.vkBridge.send === "function"
+    ) {
 
-            await window.vkBridge.send(
+        window.vkBridge
+            .send(
                 "VKWebAppOpenURL",
                 {
                     url: url
                 }
-            );
+            )
+            .then(() => {
 
-            return;
+                console.log(
+                    "Переход в сообщения выполнен."
+                );
 
-        }
+            })
+            .catch(error => {
 
-    } catch (error) {
+                console.log(
+                    "VK Bridge не открыл ссылку:",
+                    error
+                );
 
-        console.log(
-            "VK OpenURL error:",
-            error
-        );
+                // Если Bridge не сработал,
+                // используем обычный переход.
+
+                window.location.href = url;
+
+            });
+
+        return;
 
     }
 
 
-    // Если приложение открыто
-    // не внутри VK — открываем ссылку обычным способом.
+    // --------------------------------------------------------
+    // ЕСЛИ ОТКРЫТО НЕ В VK
+    //
+    // Например, пользователь тестирует приложение
+    // по ссылке GitHub Pages.
+    // --------------------------------------------------------
 
-    window.open(
-        url,
-        "_blank",
-        "noopener,noreferrer"
-    );
+    window.location.href = url;
 
 }
 
@@ -725,14 +754,10 @@ document.addEventListener(
     "DOMContentLoaded",
     async () => {
 
-        // Показываем название проекта.
         renderBrand();
 
-        // Инициализируем VK Bridge.
-        // Ошибка Bridge не блокирует приложение.
         await initVK();
 
-        // Запускаем интерфейс.
         renderStart();
 
     }
