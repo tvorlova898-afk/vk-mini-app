@@ -1,10 +1,10 @@
 // ============================================================
 // VK MINI APP
-// Универсальная логика приложения
+// ОСНОВНАЯ ЛОГИКА ПРИЛОЖЕНИЯ
 //
 // ВАЖНО:
-// Все данные и настройки находятся в config.js.
-// Этот файл НЕ НУЖНО редактировать.
+// Все изменяемые данные находятся в config.js.
+// Этот файл менять участнику клуба НЕ НУЖНО.
 // ============================================================
 
 
@@ -207,6 +207,10 @@ function attachOptionHandlers(handler) {
                     const id =
                         button.dataset.id;
 
+                    if (!id) {
+                        return;
+                    }
+
                     handler(id);
 
                 }
@@ -267,8 +271,6 @@ function renderStart() {
         startButton.addEventListener(
             "click",
             () => {
-
-                state.step = 1;
 
                 renderProductQuestion();
 
@@ -502,6 +504,12 @@ function renderResourcesQuestion() {
 
 // ============================================================
 // КЛЮЧ РЕЗУЛЬТАТА
+//
+// Формат:
+// product_goal_resources
+//
+// Например:
+// services_sales_minimum
 // ============================================================
 
 function getResultKey() {
@@ -517,17 +525,38 @@ function getResultKey() {
 
 // ============================================================
 // ПОЛУЧЕНИЕ РЕЗУЛЬТАТА
+//
+// ВАЖНО:
+// Результаты находятся в config.js.
 // ============================================================
 
 function getResult() {
 
-    const key =
-        getResultKey();
+    const key = getResultKey();
 
-    return (
-        CONFIG.results[key] ||
+    if (
+        CONFIG.results &&
+        CONFIG.results[key]
+    ) {
+
+        return CONFIG.results[key];
+
+    }
+
+    if (
+        CONFIG.results &&
         CONFIG.results.default
-    );
+    ) {
+
+        return CONFIG.results.default;
+
+    }
+
+    return {
+        name: "Интерактивная диагностика",
+        description:
+            "В вашей ситуации стоит начать с механики, которая помогает человеку разобраться в своей задаче."
+    };
 
 }
 
@@ -540,8 +569,7 @@ function renderResult() {
 
     state.step = 4;
 
-    const result =
-        getResult();
+    const result = getResult();
 
 
     render(`
@@ -572,7 +600,7 @@ function renderResult() {
 
         <button
             class="primary-button"
-            id="communityButton"
+            id="messagesButton"
             type="button"
         >
             ${CONFIG.resultButtonText}
@@ -595,15 +623,13 @@ function renderResult() {
     `);
 
 
-    const communityButton =
-        document.getElementById(
-            "communityButton"
-        );
+    const messagesButton =
+        document.getElementById("messagesButton");
 
 
-    if (communityButton) {
+    if (messagesButton) {
 
-        communityButton.addEventListener(
+        messagesButton.addEventListener(
             "click",
             openPersonalMessages
         );
@@ -612,9 +638,7 @@ function renderResult() {
 
 
     const restartButton =
-        document.getElementById(
-            "restartButton"
-        );
+        document.getElementById("restartButton");
 
 
     if (restartButton) {
@@ -630,7 +654,7 @@ function renderResult() {
 
 
 // ============================================================
-// ПЕРЕХОД В ЛИЧНЫЕ СООБЩЕНИЯ
+// ПЕРЕХОД В ЛИЧНЫЕ СООБЩЕНИЯ VK
 //
 // Ссылка берётся из:
 // CONFIG.personalMessagesUrl
@@ -682,7 +706,7 @@ async function openPersonalMessages() {
 
 
     // Если приложение открыто
-    // не внутри VK — обычное открытие ссылки.
+    // не внутри VK — открываем ссылку обычным способом.
 
     window.open(
         url,
@@ -701,11 +725,11 @@ document.addEventListener(
     "DOMContentLoaded",
     async () => {
 
-        // Показываем бренд.
+        // Показываем название проекта.
         renderBrand();
 
-        // Пытаемся инициализировать VK.
-        // Ошибка VK Bridge не блокирует приложение.
+        // Инициализируем VK Bridge.
+        // Ошибка Bridge не блокирует приложение.
         await initVK();
 
         // Запускаем интерфейс.
