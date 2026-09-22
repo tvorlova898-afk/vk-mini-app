@@ -1,739 +1,324 @@
-// ============================================================
-// VK MINI APP
-// ОСНОВНАЯ ЛОГИКА ПРИЛОЖЕНИЯ
-//
-// Все данные владельца находятся в config.js.
-// ============================================================
-
-
-// ============================================================
-// СОСТОЯНИЕ
-// ============================================================
-
-let state = {
-    step: 1,
-    product: null,
-    goal: null,
-    resources: null
-};
-
-
-// ============================================================
-// ЭЛЕМЕНТЫ СТРАНИЦЫ
-// ============================================================
-
-const screen = document.getElementById("screen");
-const stepCounter = document.getElementById("stepCounter");
-const brandElement = document.getElementById("brand");
-
-
-// ============================================================
-// VK BRIDGE
-// ============================================================
-
-async function initVK() {
-
-    try {
-
-        if (
-            window.vkBridge &&
-            typeof window.vkBridge.send === "function"
-        ) {
-
-            await Promise.race([
-
-                window.vkBridge.send("VKWebAppInit"),
-
-                new Promise(resolve => {
-                    setTimeout(resolve, 1000);
-                })
-
-            ]);
-
-        }
-
-    } catch (error) {
-
-        console.log(
-            "VK Bridge initialization:",
-            error
-        );
-
-    }
-
-}
-
-
-// ============================================================
-// БРЕНД
-// ============================================================
-
-function renderBrand() {
-
-    if (
-        brandElement &&
-        typeof CONFIG !== "undefined" &&
-        CONFIG.brand
-    ) {
-
-        brandElement.textContent = CONFIG.brand;
-
-    }
-
-}
-
-
-// ============================================================
-// СЧЁТЧИК
-// ============================================================
-
-function updateStepCounter() {
-
-    if (!stepCounter) {
-        return;
-    }
-
-    if (state.step <= 3) {
-
-        stepCounter.textContent =
-            `${state.step} / 3`;
-
-    } else {
-
-        stepCounter.textContent = "";
-
-    }
-
-}
-
-
-// ============================================================
-// АНИМАЦИЯ
-// ============================================================
-
-function restartAnimation() {
-
-    if (!screen) {
-        return;
-    }
-
-    screen.style.animation = "none";
-
-    void screen.offsetWidth;
-
-    screen.style.animation = "";
-
-}
-
-
-// ============================================================
-// ОТРИСОВКА
-// ============================================================
-
-function render(html) {
-
-    if (!screen) {
-
-        console.error(
-            "Ошибка: элемент #screen не найден."
-        );
-
-        return;
-
-    }
-
-    screen.innerHTML = html;
-
-    restartAnimation();
-
-    updateStepCounter();
-
-    window.scrollTo({
-        top: 0,
-        behavior: "smooth"
-    });
-
-}
-
-
-// ============================================================
-// ВАРИАНТ ОТВЕТА
-// ============================================================
-
-function createOption(item) {
-
-    return `
-        <button
-            class="option"
-            type="button"
-            data-id="${item.id}"
-        >
-
-            <span class="option-title">
-                ${item.title}
-            </span>
-
-            <span class="option-description">
-                ${item.description}
-            </span>
-
-        </button>
-    `;
-
-}
-
-
-// ============================================================
-// ОБРАБОТЧИКИ ВАРИАНТОВ
-// ============================================================
-
-function attachOptionHandlers(handler) {
-
-    document
-        .querySelectorAll(".option")
-        .forEach(button => {
-
-            button.addEventListener(
-                "click",
-                () => {
-
-                    const id =
-                        button.dataset.id;
-
-                    if (!id) {
-                        return;
-                    }
-
-                    handler(id);
-
-                }
-            );
-
-        });
-
-}
-
-
-// ============================================================
-// СТАРТ
-// ============================================================
-
-function renderStart() {
-
-    state.step = 1;
-
-    state.product = null;
-    state.goal = null;
-    state.resources = null;
-
-
-    render(`
-
-        <div class="badge">
-            ИНТЕРАКТИВНЫЙ ДИАГНОСТИЧЕСКИЙ ТЕСТ
-        </div>
-
-        <h1>
-            ${CONFIG.title}
-        </h1>
-
-        <p class="description">
-            ${CONFIG.subtitle}
-        </p>
-
-        <button
-            class="primary-button"
-            id="startButton"
-            type="button"
-        >
-            Начать
-        </button>
-
-        <div class="note">
-            Всего 3 вопроса. В конце вы получите персональную рекомендацию.
-        </div>
-
-    `);
-
-
-    const startButton =
-        document.getElementById("startButton");
-
-
-    if (startButton) {
-
-        startButton.addEventListener(
-            "click",
-            renderProductQuestion
-        );
-
-    }
-
-}
-
-
-// ============================================================
-// ВОПРОС 1
-// ============================================================
-
-function renderProductQuestion() {
-
-    state.step = 1;
-
-
-    const options =
-        CONFIG.products
-            .map(item => createOption(item))
-            .join("");
-
-
-    render(`
-
-        <div class="progress">
-
-            <div
-                class="progress-inner"
-                style="width: 33.33%"
-            ></div>
-
-        </div>
-
-        <div class="badge">
-            ВОПРОС 1
-        </div>
-
-        <h2>
-            Что вы продаёте?
-        </h2>
-
-        <p class="description">
-            Выберите вариант, который ближе всего к вашей модели бизнеса.
-        </p>
-
-        <div class="options">
-            ${options}
-        </div>
-
-    `);
-
-
-    attachOptionHandlers(
-        productId => {
-
-            state.product = productId;
-
-            renderGoalQuestion();
-
-        }
-    );
-
-}
-
-
-// ============================================================
-// ВОПРОС 2
-// ============================================================
-
-function renderGoalQuestion() {
-
-    state.step = 2;
-
-
-    const options =
-        CONFIG.goals
-            .map(item => createOption(item))
-            .join("");
-
-
-    render(`
-
-        <div class="progress">
-
-            <div
-                class="progress-inner"
-                style="width: 66.66%"
-            ></div>
-
-        </div>
-
-        <div class="badge">
-            ВОПРОС 2
-        </div>
-
-        <h2>
-            Что сейчас важнее всего?
-        </h2>
-
-        <p class="description">
-            Выберите главную задачу, которую хотите решить.
-        </p>
-
-        <div class="options">
-            ${options}
-        </div>
-
-        <button
-            class="back-button"
-            id="backButton"
-            type="button"
-        >
-            ← Назад
-        </button>
-
-    `);
-
-
-    attachOptionHandlers(
-        goalId => {
-
-            state.goal = goalId;
-
-            renderResourcesQuestion();
-
-        }
-    );
-
-
-    const backButton =
-        document.getElementById("backButton");
-
-
-    if (backButton) {
-
-        backButton.addEventListener(
-            "click",
-            renderProductQuestion
-        );
-
-    }
-
-}
-
-
-// ============================================================
-// ВОПРОС 3
-// ============================================================
-
-function renderResourcesQuestion() {
-
-    state.step = 3;
-
-
-    const options =
-        CONFIG.resources
-            .map(item => createOption(item))
-            .join("");
-
-
-    render(`
-
-        <div class="progress">
-
-            <div
-                class="progress-inner"
-                style="width: 100%"
-            ></div>
-
-        </div>
-
-        <div class="badge">
-            ВОПРОС 3
-        </div>
-
-        <h2>
-            Сколько ресурсов готовы вложить?
-        </h2>
-
-        <p class="description">
-            Не только деньги — учитываем также время и готовность разбираться с системой.
-        </p>
-
-        <div class="options">
-            ${options}
-        </div>
-
-        <button
-            class="back-button"
-            id="backButton"
-            type="button"
-        >
-            ← Назад
-        </button>
-
-    `);
-
-
-    attachOptionHandlers(
-        resourceId => {
-
-            state.resources = resourceId;
-
-            renderResult();
-
-        }
-    );
-
-
-    const backButton =
-        document.getElementById("backButton");
-
-
-    if (backButton) {
-
-        backButton.addEventListener(
-            "click",
-            renderGoalQuestion
-        );
-
-    }
-
-}
-
-
-// ============================================================
-// КЛЮЧ РЕЗУЛЬТАТА
-// ============================================================
-
-function getResultKey() {
-
-    return [
-        state.product,
-        state.goal,
-        state.resources
-    ].join("_");
-
-}
-
-
-// ============================================================
-// ПОЛУЧЕНИЕ РЕЗУЛЬТАТА
-// ============================================================
-
-function getResult() {
-
-    const key =
-        getResultKey();
-
-
-    if (
-        CONFIG.results &&
-        CONFIG.results[key]
-    ) {
-
-        return CONFIG.results[key];
-
-    }
-
-
-    if (
-        CONFIG.results &&
-        CONFIG.results.default
-    ) {
-
-        return CONFIG.results.default;
-
-    }
-
-
-    return {
-
-        name: "Интерактивная диагностика",
-
-        description:
-            "В вашей ситуации стоит начать с механики, которая помогает человеку разобраться в своей задаче."
-
+(function () {
+    "use strict";
+
+    const state = {
+        step: 1,
+        product: null,
+        goal: null,
+        resources: null
     };
 
-}
+    const screen = document.getElementById("screen");
+    const brand = document.getElementById("brand");
+    const stepCounter = document.getElementById("stepCounter");
 
-
-// ============================================================
-// ЭКРАН РЕЗУЛЬТАТА
-// ============================================================
-
-function renderResult() {
-
-    state.step = 4;
-
-
-    const result =
-        getResult();
-
-
-    // --------------------------------------------------------
-    // ССЫЛКА НА ЛИЧНЫЕ СООБЩЕНИЯ
-    //
-    // Берём её из config.js.
-    // --------------------------------------------------------
-
-    const messagesUrl =
-        CONFIG.personalMessagesUrl;
-
-
-    // --------------------------------------------------------
-    // ПРОВЕРКА ССЫЛКИ
-    // --------------------------------------------------------
-
-    if (!messagesUrl) {
-
-        console.error(
-            "В config.js отсутствует CONFIG.personalMessagesUrl"
-        );
-
+    if (!screen) {
+        return;
     }
 
-
-    render(`
-
-        <div class="badge">
-            ВАШ РЕЗУЛЬТАТ
-        </div>
-
-        <h2>
-            Вот что вам сейчас действительно нужно
-        </h2>
-
-        <div class="result-card">
-
-            <div class="result-label">
-                РЕКОМЕНДАЦИЯ
+    if (typeof CONFIG === "undefined") {
+        screen.innerHTML = `
+            <div class="screen-inner">
+                <h1 class="title">Ошибка загрузки</h1>
+                <p class="subtitle">
+                    Не найден файл config.js.
+                </p>
             </div>
+        `;
+        return;
+    }
 
-            <div class="result-name">
-                ${result.name}
+    brand.textContent = CONFIG.brand || "";
+
+    function updateStep(number) {
+        state.step = number;
+
+        if (stepCounter) {
+            stepCounter.textContent =
+                number <= 3
+                    ? `${number} / 3`
+                    : "";
+        }
+    }
+
+    function escapeHtml(value) {
+        return String(value || "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+    function renderStart() {
+        updateStep(1);
+
+        screen.innerHTML = `
+            <div class="screen-inner">
+
+                <div class="eyebrow">
+                    Интерактивная диагностика
+                </div>
+
+                <h1 class="title">
+                    ${escapeHtml(
+                        CONFIG.title ||
+                        "Что вам на самом деле нужно?"
+                    )}
+                </h1>
+
+                <p class="subtitle">
+                    ${escapeHtml(
+                        CONFIG.subtitle ||
+                        "Ответьте на три вопроса — и получите персональную механику."
+                    )}
+                </p>
+
+                <div class="question">
+                    Что вы продаёте?
+                </div>
+
+                <div class="options">
+                    ${renderOptions(CONFIG.products || [], "product")}
+                </div>
+
             </div>
+        `;
 
-            <div class="result-description">
-                ${result.description}
-            </div>
+        bindOptions("product");
+    }
 
-        </div>
+    function renderOptions(items, type) {
+        return items.map(function (item) {
+            return `
+                <button
+                    type="button"
+                    class="option"
+                    data-type="${escapeHtml(type)}"
+                    data-id="${escapeHtml(item.id)}"
+                >
+                    <span class="option-title">
+                        ${escapeHtml(item.title)}
+                    </span>
 
+                    ${
+                        item.description
+                            ? `
+                                <span class="option-description">
+                                    ${escapeHtml(item.description)}
+                                </span>
+                            `
+                            : ""
+                    }
+                </button>
+            `;
+        }).join("");
+    }
 
-        <!-- ==================================================
-             КНОПКА ПЕРЕХОДА В СООБЩЕНИЯ
+    function bindOptions(type) {
+        const buttons = screen.querySelectorAll(
+            `.option[data-type="${type}"]`
+        );
 
-             Это НЕ JavaScript-кнопка.
+        buttons.forEach(function (button) {
+            button.addEventListener("click", function () {
+                const id = button.dataset.id;
 
-             Это настоящая ссылка <a>.
-             Поэтому переход работает напрямую.
-             ================================================== -->
-
-        <a
-            id="messagesLink"
-            class="primary-button"
-            href="${messagesUrl || "#"}"
-            target="_blank"
-            rel="noopener noreferrer"
-            style="
-                display: block;
-                position: relative;
-                z-index: 1000;
-                pointer-events: auto;
-                cursor: pointer;
-                text-decoration: none;
-                text-align: center;
-            "
-        >
-            Обсудить результат
-        </a>
-
-
-        <button
-            class="secondary-button"
-            id="restartButton"
-            type="button"
-        >
-            ${CONFIG.restartButtonText}
-        </button>
-
-
-        <div class="note">
-            Результат сформирован на основе ваших ответов.
-            Это не универсальный рецепт, а отправная точка
-            для выбора механики.
-        </div>
-
-    `);
-
-
-    // --------------------------------------------------------
-    // ДОПОЛНИТЕЛЬНО:
-    // если ссылку нельзя открыть из-за особенностей WebView,
-    // пробуем открыть её через VK Bridge.
-    //
-    // Но сама ссылка выше уже является рабочим элементом.
-    // --------------------------------------------------------
-
-    const messagesLink =
-        document.getElementById("messagesLink");
-
-
-    if (messagesLink) {
-
-        messagesLink.addEventListener(
-            "click",
-            event => {
-
-                if (!messagesUrl) {
-
-                    event.preventDefault();
-
-                    alert(
-                        "Ссылка на сообщения VK не настроена."
-                    );
-
-                    return;
-
+                if (type === "product") {
+                    state.product = id;
+                    renderGoal();
                 }
 
+                if (type === "goal") {
+                    state.goal = id;
+                    renderResources();
+                }
 
-                // Внутри VK оставляем обычную ссылку.
-                // Она должна открыться штатно.
-                console.log(
-                    "Открываем сообщения:",
-                    messagesUrl
-                );
-
-            }
-        );
-
+                if (type === "resources") {
+                    state.resources = id;
+                    renderResult();
+                }
+            });
+        });
     }
 
+    function renderGoal() {
+        updateStep(2);
 
-    // --------------------------------------------------------
-    // ПРОЙТИ ЗАНОВО
-    // --------------------------------------------------------
+        screen.innerHTML = `
+            <div class="screen-inner">
 
-    const restartButton =
-        document.getElementById("restartButton");
+                <div class="eyebrow">
+                    Вопрос 2 из 3
+                </div>
 
+                <h1 class="title">
+                    Какая задача сейчас главная?
+                </h1>
 
-    if (restartButton) {
+                <p class="subtitle">
+                    Выберите то, что важнее всего прямо сейчас.
+                </p>
 
-        restartButton.addEventListener(
-            "click",
-            renderStart
-        );
+                <div class="options">
+                    ${renderOptions(CONFIG.goals || [], "goal")}
+                </div>
 
+            </div>
+        `;
+
+        bindOptions("goal");
     }
 
-}
+    function renderResources() {
+        updateStep(3);
 
+        screen.innerHTML = `
+            <div class="screen-inner">
 
-// ============================================================
-// ЗАПУСК
-// ============================================================
+                <div class="eyebrow">
+                    Последний вопрос
+                </div>
 
-document.addEventListener(
-    "DOMContentLoaded",
-    async () => {
+                <h1 class="title">
+                    Сколько ресурсов готовы вложить?
+                </h1>
 
-        renderBrand();
+                <p class="subtitle">
+                    Это поможет подобрать механику без лишней сложности.
+                </p>
 
-        await initVK();
+                <div class="options">
+                    ${renderOptions(
+                        CONFIG.resources || [],
+                        "resources"
+                    )}
+                </div>
 
-        renderStart();
+            </div>
+        `;
 
+        bindOptions("resources");
     }
-);
+
+    function getResult() {
+        const key =
+            `${state.product}_${state.goal}_${state.resources}`;
+
+        if (
+            CONFIG.results &&
+            CONFIG.results[key]
+        ) {
+            return CONFIG.results[key];
+        }
+
+        if (
+            CONFIG.results &&
+            CONFIG.results.default
+        ) {
+            return CONFIG.results.default;
+        }
+
+        return {
+            name: "Персональная механика",
+            description:
+                "По вашим ответам стоит подобрать механику, которая соответствует вашей задаче, продукту и доступным ресурсам."
+        };
+    }
+
+    function renderResult() {
+        updateStep(4);
+
+        const result = getResult();
+
+        const resultName =
+            result.name ||
+            result.title ||
+            "Персональная механика";
+
+        const resultDescription =
+            result.description ||
+            "";
+
+        const buttonText =
+            CONFIG.resultButtonText ||
+            "Обсудить результат";
+
+        screen.innerHTML = `
+            <div class="screen-inner">
+
+                <div class="eyebrow">
+                    Ваш результат
+                </div>
+
+                <h1 class="title">
+                    Вот что вам подходит
+                </h1>
+
+                <div class="result-card">
+
+                    <div class="result-label">
+                        Рекомендация
+                    </div>
+
+                    <div class="result-name">
+                        ${escapeHtml(resultName)}
+                    </div>
+
+                    <div class="result-description">
+                        ${escapeHtml(resultDescription)}
+                    </div>
+
+                    <div class="actions">
+
+                        <a
+                            class="primary-button messages-button"
+                            href="${escapeHtml(
+                                CONFIG.personalMessagesUrl || "#"
+                            )}"
+                        >
+                            ${escapeHtml(buttonText)}
+                        </a>
+
+                        <button
+                            type="button"
+                            class="secondary-button"
+                            id="restartButton"
+                        >
+                            ${escapeHtml(
+                                CONFIG.restartButtonText ||
+                                "Пройти заново"
+                            )}
+                        </button>
+
+                    </div>
+
+                    <div class="note">
+                        Нажмите кнопку, чтобы перейти к личным сообщениям.
+                    </div>
+
+                </div>
+
+            </div>
+        `;
+
+        const restartButton =
+            document.getElementById("restartButton");
+
+        if (restartButton) {
+            restartButton.addEventListener(
+                "click",
+                function () {
+                    state.product = null;
+                    state.goal = null;
+                    state.resources = null;
+
+                    renderStart();
+                }
+            );
+        }
+    }
+
+    renderStart();
+
+})();
